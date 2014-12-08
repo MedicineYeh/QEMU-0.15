@@ -1,3 +1,15 @@
 Read the documentation in qemu-doc.html.
 
 Fabrice Bellard.
+
+# How To Build
+1. `mkdir build`
+2. `cd build`
+3. `../configure --target-list=arm-softmmu --prefix=$PWD`
+4. `make -j5`
+5. `make install` (Optional)
+
+# How To Execute
+This is just a sample, you may need to modify some parts to fit your needs.
+`./qemu/arm-softmmu/qemu-system-arm -kernel zImage -initrd rootfs.cpio -appen    d "console=ttyAMA0" -nographic -M versatilepb`
+
