@@ -296,11 +296,11 @@ Restore the screen's un-scaled dimensions
 @kindex Ctrl-Alt-n
 Switch to virtual console 'n'. Standard console mappings are:
 @table @emph
-@item 1
+@item C<1>
 Target system display
-@item 2
+@item C<2>
 Monitor
-@item 3
+@item C<3>
 Serial port
 @end table
 

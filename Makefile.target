@@ -38,7 +38,7 @@ PROGS=$(QEMU_PROG)
 STPFILES=
 
 ifndef CONFIG_HAIKU
-LIBS+=-lm
+LIBS+=-pthread -lrt -lm
 endif
 
 config-target.h: config-target.h-timestamp

@@ -36,34 +36,35 @@ $fnno = 1;
 $inf = "";
 $ibase = "";
 @ipath = ();
+$encoding = undef;
 
 while ($_ = shift) {
     if (/^-D(.*)$/) {
-	if ($1 ne "") {
-	    $flag = $1;
-	} else {
-	    $flag = shift;
-	}
-	$value = "";
-	($flag, $value) = ($flag =~ /^([^=]+)(?:=(.+))?/);
-	die "no flag specified for -D\n"
-	    unless $flag ne "";
-	die "flags may only contain letters, digits, hyphens, dashes and underscores\n"
-	    unless $flag =~ /^[a-zA-Z0-9_-]+$/;
-	$defs{$flag} = $value;
+    if ($1 ne "") {
+        $flag = $1;
+    } else {
+        $flag = shift;
+    }
+    $value = "";
+    ($flag, $value) = ($flag =~ /^([^=]+)(?:=(.+))?/);
+    die "no flag specified for -D\n"
+        unless $flag ne "";
+    die "flags may only contain letters, digits, hyphens, dashes and underscores\n"
+        unless $flag =~ /^[a-zA-Z0-9_-]+$/;
+    $defs{$flag} = $value;
     } elsif (/^-I(.*)$/) {
-	if ($1 ne "") {
-	    $flag = $1;
-	} else {
-	    $flag = shift;
-	}
+    if ($1 ne "") {
+        $flag = $1;
+    } else {
+        $flag = shift;
+    }
         push (@ipath, $flag);
     } elsif (/^-/) {
-	usage();
+    usage();
     } else {
-	$in = $_, next unless defined $in;
-	$out = $_, next unless defined $out;
-	usage();
+    $in = $_, next unless defined $in;
+    $out = $_, next unless defined $out;
+    usage();
     }
 }
 
@@ -83,13 +84,13 @@ while(defined $inf) {
 while(<$inf>) {
     # Certain commands are discarded without further processing.
     /^\@(?:
-	 [a-z]+index		# @*index: useful only in complete manual
-	 |need			# @need: useful only in printed manual
-	 |(?:end\s+)?group	# @group .. @end group: ditto
-	 |page			# @page: ditto
-	 |node			# @node: useful only in .info file
-	 |(?:end\s+)?ifnottex   # @ifnottex .. @end ifnottex: use contents
-	)\b/x and next;
+     [a-z]+index        # @*index: useful only in complete manual
+     |need          # @need: useful only in printed manual
+     |(?:end\s+)?group  # @group .. @end group: ditto
+     |page          # @page: ditto
+     |node          # @node: useful only in .info file
+     |(?:end\s+)?ifnottex   # @ifnottex .. @end ifnottex: use contents
+    )\b/x and next;
 
     chomp;
 
@@ -97,40 +98,46 @@ while(<$inf>) {
     /^\@setfilename\s+([^.]+)/ and $fn = $1, next;
     /^\@settitle\s+([^.]+)/ and $tl = postprocess($1), next;
 
+    # Look for document encoding
+    /^\@documentencoding\s+([^.]+)/ and do {
+        $encoding = $1 unless defined $encoding;
+        next;
+    };
+
     # Identify a man title but keep only the one we are interested in.
     /^\@c\s+man\s+title\s+([A-Za-z0-9-]+)\s+(.+)/ and do {
-	if (exists $defs{$1}) {
-	    $fn = $1;
-	    $tl = postprocess($2);
-	}
-	next;
+    if (exists $defs{$1}) {
+        $fn = $1;
+        $tl = postprocess($2);
+    }
+    next;
     };
 
     # Look for blocks surrounded by @c man begin SECTION ... @c man end.
     # This really oughta be @ifman ... @end ifman and the like, but such
     # would require rev'ing all other Texinfo translators.
     /^\@c\s+man\s+begin\s+([A-Z]+)\s+([A-Za-z0-9-]+)/ and do {
-	$output = 1 if exists $defs{$2};
+    $output = 1 if exists $defs{$2};
         $sect = $1;
-	next;
+    next;
     };
     /^\@c\s+man\s+begin\s+([A-Z]+)/ and $sect = $1, $output = 1, next;
     /^\@c\s+man\s+end/ and do {
-	$sects{$sect} = "" unless exists $sects{$sect};
-	$sects{$sect} .= postprocess($section);
-	$section = "";
-	$output = 0;
-	next;
+    $sects{$sect} = "" unless exists $sects{$sect};
+    $sects{$sect} .= postprocess($section);
+    $section = "";
+    $output = 0;
+    next;
     };
 
     # handle variables
     /^\@set\s+([a-zA-Z0-9_-]+)\s*(.*)$/ and do {
-	$defs{$1} = $2;
-	next;
+    $defs{$1} = $2;
+    next;
     };
     /^\@clear\s+([a-zA-Z0-9_-]+)/ and do {
-	delete $defs{$1};
-	next;
+    delete $defs{$1};
+    next;
     };
 
     next unless $output;
@@ -142,57 +149,57 @@ while(<$inf>) {
     # End-block handler goes up here because it needs to operate even
     # if we are skipping.
     /^\@end\s+([a-z]+)/ and do {
-	# Ignore @end foo, where foo is not an operation which may
-	# cause us to skip, if we are presently skipping.
-	my $ended = $1;
-	next if $skipping && $ended !~ /^(?:ifset|ifclear|ignore|menu|iftex|copying)$/;
+    # Ignore @end foo, where foo is not an operation which may
+    # cause us to skip, if we are presently skipping.
+    my $ended = $1;
+    next if $skipping && $ended !~ /^(?:ifset|ifclear|ignore|menu|iftex|copying)$/;
 
-	die "\@end $ended without \@$ended at line $.\n" unless defined $endw;
-	die "\@$endw ended by \@end $ended at line $.\n" unless $ended eq $endw;
+    die "\@end $ended without \@$ended at line $.\n" unless defined $endw;
+    die "\@$endw ended by \@end $ended at line $.\n" unless $ended eq $endw;
 
-	$endw = pop @endwstack;
+    $endw = pop @endwstack;
 
-	if ($ended =~ /^(?:ifset|ifclear|ignore|menu|iftex)$/) {
-	    $skipping = pop @skstack;
-	    next;
-	} elsif ($ended =~ /^(?:example|smallexample|display)$/) {
-	    $shift = "";
-	    $_ = "";	# need a paragraph break
-	} elsif ($ended =~ /^(?:itemize|enumerate|[fv]?table)$/) {
-	    $_ = "\n=back\n";
-	    $ic = pop @icstack;
-	} elsif ($ended eq "multitable") {
-	    $_ = "\n=back\n";
-	} else {
-	    die "unknown command \@end $ended at line $.\n";
-	}
+    if ($ended =~ /^(?:ifset|ifclear|ignore|menu|iftex)$/) {
+        $skipping = pop @skstack;
+        next;
+    } elsif ($ended =~ /^(?:example|smallexample|display)$/) {
+        $shift = "";
+        $_ = "";    # need a paragraph break
+    } elsif ($ended =~ /^(?:itemize|enumerate|[fv]?table)$/) {
+        $_ = "\n=back\n";
+        $ic = pop @icstack;
+    } elsif ($ended eq "multitable") {
+        $_ = "\n=back\n";
+    } else {
+        die "unknown command \@end $ended at line $.\n";
+    }
     };
 
     # We must handle commands which can cause skipping even while we
     # are skipping, otherwise we will not process nested conditionals
     # correctly.
     /^\@ifset\s+([a-zA-Z0-9_-]+)/ and do {
-	push @endwstack, $endw;
-	push @skstack, $skipping;
-	$endw = "ifset";
-	$skipping = 1 unless exists $defs{$1};
-	next;
+    push @endwstack, $endw;
+    push @skstack, $skipping;
+    $endw = "ifset";
+    $skipping = 1 unless exists $defs{$1};
+    next;
     };
 
     /^\@ifclear\s+([a-zA-Z0-9_-]+)/ and do {
-	push @endwstack, $endw;
-	push @skstack, $skipping;
-	$endw = "ifclear";
-	$skipping = 1 if exists $defs{$1};
-	next;
+    push @endwstack, $endw;
+    push @skstack, $skipping;
+    $endw = "ifclear";
+    $skipping = 1 if exists $defs{$1};
+    next;
     };
 
     /^\@(ignore|menu|iftex|copying)\b/ and do {
-	push @endwstack, $endw;
-	push @skstack, $skipping;
-	$endw = $1;
-	$skipping = 1;
-	next;
+    push @endwstack, $endw;
+    push @skstack, $skipping;
+    $endw = $1;
+    $skipping = 1;
+    next;
     };
 
     next if $skipping;
@@ -219,112 +226,112 @@ while(<$inf>) {
 
     # Inside a verbatim block, handle @var specially.
     if ($shift ne "") {
-	s/\@var\{([^\}]*)\}/<$1>/g;
+    s/\@var\{([^\}]*)\}/<$1>/g;
     }
 
     # POD doesn't interpret E<> inside a verbatim block.
     if ($shift eq "") {
-	s/</&lt;/g;
-	s/>/&gt;/g;
+    s/</&lt;/g;
+    s/>/&gt;/g;
     } else {
-	s/</&LT;/g;
-	s/>/&GT;/g;
+    s/</&LT;/g;
+    s/>/&GT;/g;
     }
 
     # Single line command handlers.
 
     /^\@include\s+(.+)$/ and do {
-	push @instack, $inf;
-	$inf = gensym();
-	$file = postprocess($1);
+    push @instack, $inf;
+    $inf = gensym();
+    $file = postprocess($1);
 
-	# Try cwd and $ibase, then explicit -I paths.
-	$done = 0;
-	foreach $path ("", $ibase, @ipath) {
-	    $mypath = $file;
-	    $mypath = $path . "/" . $mypath if ($path ne "");
-	    open($inf, "<" . $mypath) and ($done = 1, last);
-	}
-	die "cannot find $file" if !$done;
-	next;
+    # Try cwd and $ibase, then explicit -I paths.
+    $done = 0;
+    foreach $path ("", $ibase, @ipath) {
+        $mypath = $file;
+        $mypath = $path . "/" . $mypath if ($path ne "");
+        open($inf, "<" . $mypath) and ($done = 1, last);
+    }
+    die "cannot find $file" if !$done;
+    next;
     };
 
     /^\@(?:section|unnumbered|unnumberedsec|center)\s+(.+)$/
-	and $_ = "\n=head2 $1\n";
+    and $_ = "\n=head2 $1\n";
     /^\@subsection\s+(.+)$/
-	and $_ = "\n=head3 $1\n";
+    and $_ = "\n=head3 $1\n";
     /^\@subsubsection\s+(.+)$/
-	and $_ = "\n=head4 $1\n";
+    and $_ = "\n=head4 $1\n";
 
     # Block command handlers:
     /^\@itemize(?:\s+(\@[a-z]+|\*|-))?/ and do {
-	push @endwstack, $endw;
-	push @icstack, $ic;
-	if (defined $1) {
-	    $ic = $1;
-	} else {
-	    $ic = '*';
-	}
-	$_ = "\n=over 4\n";
-	$endw = "itemize";
+    push @endwstack, $endw;
+    push @icstack, $ic;
+    if (defined $1) {
+        $ic = $1;
+    } else {
+        $ic = '*';
+    }
+    $_ = "\n=over 4\n";
+    $endw = "itemize";
     };
 
     /^\@enumerate(?:\s+([a-zA-Z0-9]+))?/ and do {
-	push @endwstack, $endw;
-	push @icstack, $ic;
-	if (defined $1) {
-	    $ic = $1 . ".";
-	} else {
-	    $ic = "1.";
-	}
-	$_ = "\n=over 4\n";
-	$endw = "enumerate";
+    push @endwstack, $endw;
+    push @icstack, $ic;
+    if (defined $1) {
+        $ic = $1 . ".";
+    } else {
+        $ic = "1.";
+    }
+    $_ = "\n=over 4\n";
+    $endw = "enumerate";
     };
 
     /^\@multitable\s.*/ and do {
-	push @endwstack, $endw;
-	$endw = "multitable";
-	$_ = "\n=over 4\n";
+    push @endwstack, $endw;
+    $endw = "multitable";
+    $_ = "\n=over 4\n";
     };
 
     /^\@([fv]?table)\s+(\@[a-z]+)/ and do {
-	push @endwstack, $endw;
-	push @icstack, $ic;
-	$endw = $1;
-	$ic = $2;
-	$ic =~ s/\@(?:samp|strong|key|gcctabopt|option|env)/B/;
-	$ic =~ s/\@(?:code|kbd)/C/;
-	$ic =~ s/\@(?:dfn|var|emph|cite|i)/I/;
-	$ic =~ s/\@(?:file)/F/;
-	$_ = "\n=over 4\n";
+    push @endwstack, $endw;
+    push @icstack, $ic;
+    $endw = $1;
+    $ic = $2;
+    $ic =~ s/\@(?:samp|strong|key|gcctabopt|option|env)/B/;
+    $ic =~ s/\@(?:code|kbd)/C/;
+    $ic =~ s/\@(?:dfn|var|emph|cite|i)/I/;
+    $ic =~ s/\@(?:file)/F/;
+    $_ = "\n=over 4\n";
     };
 
     /^\@((?:small)?example|display)/ and do {
-	push @endwstack, $endw;
-	$endw = $1;
-	$shift = "\t";
-	$_ = "";	# need a paragraph break
+    push @endwstack, $endw;
+    $endw = $1;
+    $shift = "\t";
+    $_ = "";    # need a paragraph break
     };
 
     /^\@item\s+(.*\S)\s*$/ and $endw eq "multitable" and do {
-	@columns = ();
-	for $column (split (/\s*\@tab\s*/, $1)) {
-	    # @strong{...} is used a @headitem work-alike
-	    $column =~ s/^\@strong{(.*)}$/$1/;
-	    push @columns, $column;
-	}
-	$_ = "\n=item ".join (" : ", @columns)."\n";
+    @columns = ();
+    for $column (split (/\s*\@tab\s*/, $1)) {
+        # @strong{...} is used a @headitem work-alike
+        $column =~ s/^\@strong{(.*)}$/$1/;
+        push @columns, $column;
+    }
+    $_ = "\n=item ".join (" : ", @columns)."\n";
     };
 
     /^\@itemx?\s*(.+)?$/ and do {
-	if (defined $1) {
-	    # Entity escapes prevent munging by the <> processing below.
-	    $_ = "\n=item $ic\&LT;$1\&GT;\n";
-	} else {
-	    $_ = "\n=item $ic\n";
-	    $ic =~ y/A-Ya-y/B-Zb-z/;
-	    $ic =~ s/(\d+)/$1 + 1/eg;
-	}
+    if (defined $1) {
+        # Entity escapes prevent munging by the <> processing below.
+        $_ = "\n=item $ic\&LT;$1\&GT;\n";
+    } else {
+        $_ = "\n=item $ic\n";
+        $ic =~ y/A-Ya-y/B-Zb-z/;
+        $ic =~ s/(\d+)/$1 + 1/eg;
+    }
     };
 
     $section .= $shift.$_."\n";
@@ -336,17 +343,19 @@ $inf = pop @instack;
 
 die "No filename or title\n" unless defined $fn && defined $tl;
 
+print "=encoding $encoding\n\n" if defined $encoding;
+
 $sects{NAME} = "$fn \- $tl\n";
 $sects{FOOTNOTES} .= "=back\n" if exists $sects{FOOTNOTES};
 
 for $sect (qw(NAME SYNOPSIS DESCRIPTION OPTIONS ENVIRONMENT FILES
-	      BUGS NOTES FOOTNOTES SEEALSO AUTHOR COPYRIGHT)) {
+          BUGS NOTES FOOTNOTES SEEALSO AUTHOR COPYRIGHT)) {
     if(exists $sects{$sect}) {
-	$head = $sect;
-	$head =~ s/SEEALSO/SEE ALSO/;
-	print "=head1 $head\n\n";
-	print scalar unmunge ($sects{$sect});
-	print "\n";
+    $head = $sect;
+    $head =~ s/SEEALSO/SEE ALSO/;
+    print "=head1 $head\n\n";
+    print scalar unmunge ($sects{$sect});
+    print "\n";
     }
 }
 
@@ -361,13 +370,13 @@ sub postprocess
 
     # @value{foo} is replaced by whatever 'foo' is defined as.
     while (m/(\@value\{([a-zA-Z0-9_-]+)\})/g) {
-	if (! exists $defs{$2}) {
-	    print STDERR "Option $2 not defined\n";
-	    s/\Q$1\E//;
-	} else {
-	    $value = $defs{$2};
-	    s/\Q$1\E/$value/;
-	}
+    if (! exists $defs{$2}) {
+        print STDERR "Option $2 not defined\n";
+        s/\Q$1\E//;
+    } else {
+        $value = $defs{$2};
+        s/\Q$1\E/$value/;
+    }
     }
 
     # Formatting commands.
@@ -431,9 +440,9 @@ sub postprocess
     # processing because otherwise the regexp will choke on formatting
     # inside @footnote.
     while (/\@footnote/g) {
-	s/\@footnote\{([^\}]+)\}/[$fnno]/;
-	add_footnote($1, $fnno);
-	$fnno++;
+    s/\@footnote\{([^\}]+)\}/[$fnno]/;
+    add_footnote($1, $fnno);
+    $fnno++;
     }
 
     return $_;
@@ -456,7 +465,7 @@ sub unmunge
 sub add_footnote
 {
     unless (exists $sects{FOOTNOTES}) {
-	$sects{FOOTNOTES} = "\n=over 4\n\n";
+    $sects{FOOTNOTES} = "\n=over 4\n\n";
     }
 
     $sects{FOOTNOTES} .= "=item $fnno.\n\n"; $fnno++;
@@ -469,9 +478,10 @@ sub add_footnote
     my $genseq = 0;
     sub gensym
     {
-	my $name = "GEN" . $genseq++;
-	my $ref = \*{$name};
-	delete $::{$name};
-	return $ref;
+    my $name = "GEN" . $genseq++;
+    my $ref = \*{$name};
+    delete $::{$name};
+    return $ref;
     }
 }
+
